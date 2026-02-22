@@ -2,24 +2,30 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"time"
 	"github.com/Bhanubpsn/e-commerce-backend/controllers"
 	"github.com/Bhanubpsn/e-commerce-backend/database"
 	"github.com/Bhanubpsn/e-commerce-backend/middleware"
 	"github.com/Bhanubpsn/e-commerce-backend/routes"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	"log"
+	"os"
+	"time"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
 	app := controllers.NewApplication(
-		database.ProductData(database.Client, "Products"), 
+		database.ProductData(database.Client, "Products"),
 		database.UserData(database.Client, "Users"),
 	)
 

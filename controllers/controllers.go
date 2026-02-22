@@ -3,18 +3,19 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"log"
-	"net/http"
-	"time"	
 	"github.com/Bhanubpsn/e-commerce-backend/database"
 	"github.com/Bhanubpsn/e-commerce-backend/models"
 	generate "github.com/Bhanubpsn/e-commerce-backend/token"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
+	"log"
+	"net/http"
+	"time"
 )
 
 var UserCollection *mongo.Collection = database.UserData(database.Client, "Users")
@@ -43,6 +44,7 @@ func VerifyPassword(userPassword string, givenPassword string) (bool, string) {
 }
 
 func Signup() gin.HandlerFunc {
+	godotenv.Load()
 	return func(c *gin.Context) {
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 		defer cancel()
@@ -104,7 +106,7 @@ func Signup() gin.HandlerFunc {
 		}
 		defer cancel()
 
-		c.JSON(http.StatusCreated, "Successfully singed in")
+		c.JSON(http.StatusCreated, "Successfully signed in: token: "+token)
 	}
 }
 
