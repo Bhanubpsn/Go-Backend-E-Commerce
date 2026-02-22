@@ -3,14 +3,19 @@ package database
 import (
 	"context"
 	"fmt"
-	"log"
-	"time"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
+	"os"
+	"time"
 )
 
 func DBSet() *mongo.Client {
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+	client, err := mongo.NewClient(options.Client().ApplyURI(dbURL))
+	fmt.Println("DB URL:", dbURL)
 	if err != nil {
 		log.Fatal(err)
 	}
