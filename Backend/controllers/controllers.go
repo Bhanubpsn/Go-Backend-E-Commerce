@@ -3,6 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
+	"time"
+
 	"github.com/Bhanubpsn/e-commerce-backend/database"
 	"github.com/Bhanubpsn/e-commerce-backend/models"
 	generate "github.com/Bhanubpsn/e-commerce-backend/token"
@@ -13,9 +17,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
-	"log"
-	"net/http"
-	"time"
 )
 
 var UserCollection *mongo.Collection = database.UserData(database.Client, "Users")
@@ -203,43 +204,39 @@ func SearchProduct() gin.HandlerFunc {
 
 func SearchProductByQuery() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
 		var SearchProducts []models.Product
 		queryParam := c.Query("name")
 
 		if queryParam == "" {
-			log.Println("Content not found")
-			c.Header("Content-Type", "application/json")
-			c.JSON(http.StatusNotFound, gin.H{"Error": "Invalid search index"})
-			c.Abort()
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid search index"})
 			return
 		}
 
-		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 		defer cancel()
 
-		searchQueryDB, err := ProductCollection.Find(ctx, bson.M{"product_name": bson.M{"$regex": queryParam}})
-
+		cursor, err := ProductCollection.Find(
+			ctx,
+			bson.M{
+				"product_name": bson.M{
+					"$regex":   queryParam,
+					"$options": "i",
+				},
+			},
+		)
 		if err != nil {
-			c.IndentedJSON(404, "Something went wrong while Searching")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "DB error"})
 			return
 		}
+		defer cursor.Close(ctx)
 
-		err = searchQueryDB.All(ctx, SearchProducts)
+		err = cursor.All(ctx, &SearchProducts)
 		if err != nil {
-			log.Println(404, "invaliddddd")
-			c.IndentedJSON(400, "invalid")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Decode error"})
 			return
 		}
 
-		defer searchQueryDB.Close(ctx)
-
-		if err := searchQueryDB.Err(); err != nil {
-			log.Println(err)
-			c.IndentedJSON(404, "Invalid Req")
-			return
-		}
-
-		defer cancel()
-		c.IndentedJSON(200, SearchProducts)
+		c.JSON(http.StatusOK, SearchProducts)
 	}
 }
