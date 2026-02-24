@@ -3,13 +3,35 @@ package database
 import (
 	"context"
 	"fmt"
-	"github.com/joho/godotenv"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"os"
 	"time"
+
+	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+// Indexing MongoDB collections for better performance
+func CreateProductIndexes(client *mongo.Client) {
+	productCol := ProductData(client, "Products")
+	indexModel := mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "product_name", Value: "text"},
+			{Key: "category", Value: 1},
+		},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := productCol.Indexes().CreateOne(ctx, indexModel)
+	if err != nil {
+		fmt.Println("Warning: Could not create index:", err)
+	} else {
+		fmt.Println("Successfully optimized Product indexes")
+	}
+}
 
 func DBSet() *mongo.Client {
 	godotenv.Load()
@@ -36,6 +58,8 @@ func DBSet() *mongo.Client {
 	}
 
 	fmt.Println("Successfully connected to mongoDB")
+
+	CreateProductIndexes(client)
 	return client
 }
 

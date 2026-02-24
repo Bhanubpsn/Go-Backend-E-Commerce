@@ -16,6 +16,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -204,35 +205,38 @@ func SearchProduct() gin.HandlerFunc {
 
 func SearchProductByQuery() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		var SearchProducts []models.Product
-		queryParam := c.Query("name")
 
-		if queryParam == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid search index"})
+		// Get both parameters from the URL: /users/search?name=iphone&category=electronics
+		nameQuery := c.Query("name")
+		categoryQuery := c.Query("category")
+
+		if nameQuery == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Query name is required"})
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		cursor, err := ProductCollection.Find(
-			ctx,
-			bson.M{
-				"product_name": bson.M{
-					"$regex":   queryParam,
-					"$options": "i",
-				},
-			},
-		)
+		filter := bson.M{
+			"$text": bson.M{"$search": nameQuery},
+		}
+		if categoryQuery != "" {
+			filter["category"] = categoryQuery
+		}
+
+		// Pagation: limit to 20 results
+		opts := options.Find().SetLimit(20)
+
+		cursor, err := ProductCollection.Find(ctx, filter, opts)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "DB error"})
 			return
 		}
 		defer cursor.Close(ctx)
 
-		err = cursor.All(ctx, &SearchProducts)
-		if err != nil {
+		if err = cursor.All(ctx, &SearchProducts); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Decode error"})
 			return
 		}
