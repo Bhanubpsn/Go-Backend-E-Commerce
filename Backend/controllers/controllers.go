@@ -17,6 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -174,10 +175,19 @@ func ProductViewerAdmin() gin.HandlerFunc {
 func SearchProduct() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var productList []models.Product
-		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		var ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		cursor, err := ProductCollection.Find(ctx, bson.D{{}})
+		secondaryOpts := options.Collection().SetReadPreference(readpref.SecondaryPreferred())
+
+		// For secondary reads
+		searchCollection, err := ProductCollection.Clone(secondaryOpts)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Secondary read preference error: " + err.Error()})
+			return
+		}
+
+		cursor, err := searchCollection.Find(ctx, bson.D{{}})
 		if err != nil {
 			c.IndentedJSON(http.StatusInternalServerError, "Something went wrong")
 			return
@@ -199,7 +209,6 @@ func SearchProduct() gin.HandlerFunc {
 
 		defer cancel()
 		c.IndentedJSON(200, productList)
-		return
 	}
 }
 
@@ -227,9 +236,19 @@ func SearchProductByQuery() gin.HandlerFunc {
 		}
 
 		// Pagation: limit to 20 results
-		opts := options.Find().SetLimit(20)
+		findOptions := options.Find().SetLimit(20)
 
-		cursor, err := ProductCollection.Find(ctx, filter, opts)
+		// Use a secondary read preference to distribute read load
+		secondaryRead := options.Collection().SetReadPreference(readpref.SecondaryPreferred())
+
+		// Hopefully the clone does not make a copy of the entire collection, but just a shallow one
+		secondaryCol, err := ProductCollection.Clone(secondaryRead)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Config error"})
+			return
+		}
+
+		cursor, err := secondaryCol.Find(ctx, filter, findOptions)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "DB error"})
 			return
