@@ -27,6 +27,7 @@ type Product struct {
 	Product_ID   primitive.ObjectID `bson:"_id"`
 	Product_Name *string            `json:"product_name"`
 	Price        *uint64            `json:"price"`
+	Category     *string            `json:"category"`
 	Rating       *uint8             `json:"rating"`
 	Image        *string            `json:"image"`
 }
@@ -35,6 +36,7 @@ type ProductUser struct {
 	Product_ID   primitive.ObjectID `bson:"_id"`
 	Product_Name *string            `bson:"product_name"`
 	Price        int                `bson:"price"`
+	Category     *string            `bson:"category"`
 	Rating       *uint              `bson:"rating"`
 	Image        *string            `bson:"image"`
 }

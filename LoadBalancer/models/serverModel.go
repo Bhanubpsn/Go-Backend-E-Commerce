@@ -63,8 +63,15 @@ func (lb *LoadBalancer) ServeProxy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	log.Printf("[LoadBalanced] Forwarding %s %s -> %s", r.Method, r.URL.Path, targetServer.Addr)
+	start := time.Now()
 	targetServer.Proxy.ServeHTTP(w, r)
+	duration := time.Since(start)
+	log.Printf("[LoadBalanced] %s %s -> %s | Duration: %v",
+		r.Method,
+		r.URL.Path,
+		targetServer.Addr,
+		duration,
+	)
 }
 
 func (lb *LoadBalancer) HealthCheck() {
