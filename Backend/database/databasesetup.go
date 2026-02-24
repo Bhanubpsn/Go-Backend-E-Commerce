@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -36,7 +38,24 @@ func CreateProductIndexes(client *mongo.Client) {
 func DBSet() *mongo.Client {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
-	client, err := mongo.NewClient(options.Client().ApplyURI(dbURL))
+	monitor := &event.CommandMonitor{
+		Started: func(_ context.Context, e *event.CommandStartedEvent) {
+			if e.CommandName == "ping" || e.CommandName == "endSessions" {
+				return
+			}
+			// Color coding db instances based on server port
+			color := "\033[33m" // Yellow (Primary instance)
+			nodeType := "PRIMARY"
+
+			if strings.Contains(e.ConnectionID, "27018") || strings.Contains(e.ConnectionID, "27019") {
+				color = "\033[35m" // Purple (Secondary instances)
+				nodeType = "SECONDARY"
+			}
+			fmt.Printf("%s[MONGO] [%s] %s -> %s\033[0m\n",
+				color, nodeType, e.CommandName, e.ConnectionID)
+		},
+	}
+	client, err := mongo.NewClient(options.Client().ApplyURI(dbURL).SetMonitor(monitor))
 	fmt.Println("DB URL:", dbURL)
 	if err != nil {
 		log.Fatal(err)

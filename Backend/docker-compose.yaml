@@ -1,11 +1,53 @@
 version: '3.8'
 
 services:
-  mongo:
+  mongo-primary:
     image: mongo:5.0.3
-    container_name: mongo
+    container_name: mongo-primary
+    user: root
+    command: >
+      bash -c "cp /etc/mongo-keyfile /tmp/mongo-keyfile && 
+               chown 999:999 /tmp/mongo-keyfile && 
+               chmod 400 /tmp/mongo-keyfile && 
+               exec mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo-keyfile"
+    volumes:
+      - ./database/mongo-keyfile:/etc/mongo-keyfile
     ports:
       - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
+
+  mongo-secondary-1:
+    image: mongo:5.0.3
+    container_name: mongo-secondary-1
+    user: root
+    command: >
+      bash -c "cp /etc/mongo-keyfile /tmp/mongo-keyfile && 
+               chown 999:999 /tmp/mongo-keyfile && 
+               chmod 400 /tmp/mongo-keyfile && 
+               exec mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo-keyfile"
+    volumes:
+      - ./database/mongo-keyfile:/etc/mongo-keyfile
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
+
+  mongo-secondary-2:
+    image: mongo:5.0.3
+    container_name: mongo-secondary-2
+    user: root
+    command: >
+      bash -c "cp /etc/mongo-keyfile /tmp/mongo-keyfile && 
+               chown 999:999 /tmp/mongo-keyfile && 
+               chmod 400 /tmp/mongo-keyfile && 
+               exec mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo-keyfile"
+    volumes:
+      - ./database/mongo-keyfile:/etc/mongo-keyfile
+    ports:
+      - "27019:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
@@ -16,8 +58,8 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      - mongo
+      - mongo-primary
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: ${DB_USERNAME}
       ME_CONFIG_MONGODB_ADMINPASSWORD: ${DB_PASSWORD}
-      ME_CONFIG_MONGODB_URL: mongodb://${DB_USERNAME}:${DB_PASSWORD}@mongo:27017/
+      ME_CONFIG_MONGODB_URL: mongodb://${DB_USERNAME}:${DB_PASSWORD}@mongo-primary:27017/admin?replicaSet=rs0
