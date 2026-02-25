@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"os"
 	"sync"
 	"time"
 )
@@ -58,6 +59,16 @@ func (lb *LoadBalancer) GetNextServer() *SimpleServer {
 }
 
 func (lb *LoadBalancer) ServeProxy(w http.ResponseWriter, r *http.Request) {
+
+	ip := r.RemoteAddr
+	resp, err := http.Get(os.Getenv("RATE_LIMITER_URL") + "/check?ip=" + ip)
+
+	if err != nil || resp.StatusCode == 429 {
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte("Rate limit exceeded at Load Balancer"))
+		return
+	}
+
 	targetServer := lb.GetNextServer()
 	if targetServer == nil {
 		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)

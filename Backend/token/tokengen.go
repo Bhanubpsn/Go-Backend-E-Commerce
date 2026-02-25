@@ -2,7 +2,6 @@ package token
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -30,7 +29,6 @@ var UserData *mongo.Collection = database.UserData(database.Client, "Users")
 var SECRET_KEY = os.Getenv("SECRET_KEY")
 
 func TokenGenerator(email string, firstname string, lastname string, uid string) (signedtoken string, signedrefreshtoken string, err error) {
-	fmt.Println("SECRET_KEY:", SECRET_KEY)
 	claims := &SignedDetails{
 		Email:      email,
 		First_Name: firstname,
