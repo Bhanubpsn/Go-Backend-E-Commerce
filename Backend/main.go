@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"time"
+
 	"github.com/Bhanubpsn/e-commerce-backend/controllers"
 	"github.com/Bhanubpsn/e-commerce-backend/database"
 	"github.com/Bhanubpsn/e-commerce-backend/middleware"
 	"github.com/Bhanubpsn/e-commerce-backend/routes"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"log"
-	"os"
-	"time"
 )
 
 func main() {
