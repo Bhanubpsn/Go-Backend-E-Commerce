@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -11,7 +13,16 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func NewLoadBalancer(port string, serverList []string) *models.LoadBalancer {
+func NewLimiterClient(addr string) *models.LimiterClient {
+	limiterConn, err := net.Dial("tcp", addr)
+	if err != nil {
+		log.Fatal("Could not connect to TCP Limiter")
+	}
+	limiterReader := bufio.NewReader(limiterConn)
+	return &models.LimiterClient{Conn: limiterConn, Reader: limiterReader}
+}
+
+func NewLoadBalancer(port string, serverList []string, lc *models.LimiterClient) *models.LoadBalancer {
 	var servers []*models.SimpleServer
 	for _, addr := range serverList {
 		serverUrl, _ := url.Parse(addr)
@@ -26,6 +37,7 @@ func NewLoadBalancer(port string, serverList []string) *models.LoadBalancer {
 		Port:            port,
 		RoundRobinCount: 0,
 		Servers:         servers,
+		Limiter:         lc,
 	}
 }
 
@@ -37,9 +49,13 @@ func main() {
 	port1 := os.Getenv("PORT1")
 	port2 := os.Getenv("PORT2")
 	port3 := os.Getenv("PORT3")
+	rateLimiterPort := os.Getenv("RATE_LIMITER_PORT")
 	loadbalancerport := os.Getenv("LOAD_BALANCER_PORT")
+
 	servers := []string{"http://localhost:" + port1, "http://localhost:" + port2, "http://localhost:" + port3}
-	lb := NewLoadBalancer(loadbalancerport, servers)
+
+	limiterClient := NewLimiterClient("localhost:" + rateLimiterPort)
+	lb := NewLoadBalancer(loadbalancerport, servers, limiterClient)
 
 	log.Printf("Load Balancer started at :%s\n", loadbalancerport)
 
