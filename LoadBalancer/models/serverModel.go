@@ -1,10 +1,12 @@
 package models
 
 import (
+	"bufio"
+	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
-	"os"
 	"sync"
 	"time"
 )
@@ -16,10 +18,16 @@ type SimpleServer struct {
 	Mux   sync.RWMutex
 }
 
+type LimiterClient struct {
+	Conn   net.Conn
+	Reader *bufio.Reader
+	Mu     sync.Mutex
+}
 type LoadBalancer struct {
 	Port            string
 	RoundRobinCount int
 	Servers         []*SimpleServer
+	Limiter         *LimiterClient
 }
 
 func (s *SimpleServer) SetAlive(alive bool) {
@@ -59,13 +67,16 @@ func (lb *LoadBalancer) GetNextServer() *SimpleServer {
 }
 
 func (lb *LoadBalancer) ServeProxy(w http.ResponseWriter, r *http.Request) {
-
 	ip := r.RemoteAddr
-	resp, err := http.Get(os.Getenv("RATE_LIMITER_URL") + "/check?ip=" + ip)
+	lb.Limiter.Mu.Lock()
+	fmt.Fprintln(lb.Limiter.Conn, ip)                 // Send IP
+	response, _ := lb.Limiter.Reader.ReadString('\n') // Read 1 or 0
+	lb.Limiter.Mu.Unlock()
 
-	if err != nil || resp.StatusCode == 429 {
+	if response[0] == '0' {
 		w.WriteHeader(http.StatusTooManyRequests)
-		w.Write([]byte("Rate limit exceeded at Load Balancer"))
+		w.Write([]byte("Rate limit exceeded"))
+		log.Printf("[RateLimited] %s %s from IP: %s", r.Method, r.URL.Path, ip)
 		return
 	}
 
