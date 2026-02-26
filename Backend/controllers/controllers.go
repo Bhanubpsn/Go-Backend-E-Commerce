@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"time"
 
@@ -44,6 +45,16 @@ func VerifyPassword(userPassword string, givenPassword string) (bool, string) {
 	}
 
 	return valid, msg
+}
+
+// This function will send the email and name to the custom message broker
+func SendToBroker(email string, name string) {
+	conn, _ := net.Dial("tcp", "localhost:9005")
+	defer conn.Close()
+
+	// Send payload
+	payload := fmt.Sprintf(`{"email":"%s", "name":"%s"}`, email, name)
+	fmt.Fprintln(conn, payload)
 }
 
 func Signup() gin.HandlerFunc {
@@ -108,7 +119,7 @@ func Signup() gin.HandlerFunc {
 			return
 		}
 		defer cancel()
-
+		SendToBroker(*user.Email, *user.First_Name)
 		c.JSON(http.StatusCreated, "Successfully signed in: token: "+token)
 	}
 }
