@@ -5,6 +5,13 @@ Install Go.
 
 1. Spin up the Docker containers to run the MongoDB instances, there should be 3 instances created 1 primary, 2 secondary.
    docker compose up -d
+   I have also added the KeyFile for the instances to talk and validate each other, since it was a local project. But you can add your own to.
+   Just make a file named mongo-KeyFile and add 756 byte string.
+
+   openssl rand -base64 756 > mongo-keyfile
+   chmod 400 mongo-keyfile
+
+   Giving it very strict permissions.
 
 2. Run Web Servers (at max right now 3 allowed) on different PORTS (choose them according to your need just update the env).
    Navigate inside Backend folder and run
